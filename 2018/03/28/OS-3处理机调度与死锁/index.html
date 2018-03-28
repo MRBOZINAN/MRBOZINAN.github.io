@@ -1,0 +1,222 @@
+<!DOCTYPE html><html lang="zh-cn"><head><meta charset="utf-8"><meta http-equiv="X-UA-Compatible" content="IE=Edge"><meta name="viewport" content="width=device-width,initial-scale=1.0,minimum-scale=1.0,maximum-scale=1.0,user-scalable=no"><meta name="format-detection" content="telephone=no"><meta name="format-detection" content="email=no"><meta name="description" content="bozinan blog ������"><meta name="keywords" content="Hexo, Gruntjs, Nodejs, Reactjs, Vuejs"><title>OS_3处理机调度与死锁 - BOZINAN'S WORLD</title><link rel="stylesheet" href="/css/main_style.min.css"><link rel="icon" href="/favicon.ico"></head><body><input id="navi" type="checkbox"><ul class="main-navication"><li><a href="/"><span>Home</span></a></li><li><a href="https://github.com"><span>Github</span></a></li></ul><div class="wrapper" id="wrap"><div class="post-header"><label class="navi-button light" for="navi">MENU</label><img class="background" src="http://callfiles.ueibo.com/hexo-theme-laughing/post_background.jpg"><div class="post-title"><h1 class="title">OS_3处理机调度与死锁</h1><ul class="meta"><li><i class="icon icon-author"></i>bozinan</li><li><i class="icon icon-clock"></i>12 Minutes</li><li><i class="icon icon-calendar"></i>2018年3月28日</li></ul></div></div><div class="article-content" style="max-width:800px"><h1 id="OS-3处理机调度与死锁"><a href="#OS-3处理机调度与死锁" class="headerlink" title="OS_3处理机调度与死锁"></a>OS_3处理机调度与死锁</h1><p>在多道程序环境下，进程数目往往多于处理机数目。要求系统能按某种算法，动态地将处理机分配给就绪队列中的一个进程，使之执行。</p>
+<h3 id="3-1调度的层次"><a href="#3-1调度的层次" class="headerlink" title="3.1调度的层次"></a>3.1调度的层次</h3><ul>
+<li><strong>高级调度</strong> <blockquote>
+<p>又称作业调度，长期调度。</p>
+</blockquote>
+</li>
+</ul>
+<blockquote>
+<p>作业：利用计算机进行一次运行所需工作的集合。要完成一个工作，用户必须先提交一个作业。如一个作业可能由多个程序构成。</p>
+<ul>
+<li><strong>低级调度</strong><br>又称进程调度，短期调度。</li>
+<li><ul>
+<li><em>非抢先式调度</em>：分配给后知道结束或阻塞才分配给其他进程。</li>
+</ul>
+</li>
+<li><ul>
+<li><em>抢先式调度</em>：允许暂停进程，把处理机给其他进程。</li>
+</ul>
+</li>
+<li><ul>
+<li><ul>
+<li>时间片原则&amp;优先权原则&amp;短作业优先原则。</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</blockquote>
+<ul>
+<li><strong>中级调度</strong><blockquote>
+<p>对换 &amp; 挂起</p>
+</blockquote>
+</li>
+</ul>
+<h4 id="3-1-2调度队列模型"><a href="#3-1-2调度队列模型" class="headerlink" title="3.1.2调度队列模型"></a>3.1.2调度队列模型</h4><ul>
+<li><strong>仅有进程调度</strong>的调度队列模型 <em>（单就绪、单阻塞队列）</em></li>
+<li><strong>具有高级和低级</strong>的调度队列模型 <em>（根据阻塞原因设置了多个阻塞队列）</em></li>
+<li><strong>同时具有三级调度</strong>的调度队列模型 </li>
+</ul>
+<h4 id="3-1-3选择调度准测"><a href="#3-1-3选择调度准测" class="headerlink" title="3.1.3选择调度准测"></a>3.1.3选择调度准测</h4><ul>
+<li>周转时间 <em>（作业从提交到完成（得到结果）所经历的时间）</em></li>
+<li><ul>
+<li>平均周转时间：</li>
+</ul>
+<p><img src="data:image/png;base64,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" alt="image"></p>
+</li>
+<li><ul>
+<li>加权周转时间：</li>
+</ul>
+<p><img src="data:image/png;base64,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" alt="image"></p>
+</li>
+</ul>
+<h3 id="3-2调度算法-（根据系统的资源分配策略所规定的资源分配算法）"><a href="#3-2调度算法-（根据系统的资源分配策略所规定的资源分配算法）" class="headerlink" title="3.2调度算法 （根据系统的资源分配策略所规定的资源分配算法）"></a>3.2调度算法 <em>（根据系统的资源分配策略所规定的资源分配算法）</em></h3><h4 id="3-2-1FCFS-amp-短作业优先"><a href="#3-2-1FCFS-amp-短作业优先" class="headerlink" title="3.2.1FCFS &amp; 短作业优先"></a>3.2.1FCFS &amp; 短作业优先</h4><ul>
+<li>FCFS *（利长、利CPU繁忙作业）</li>
+<li>短作业优先 <em>（优：比FCFS改善了周转时间，缩短等待时间，提高吞吐量；劣：对长作业不利，对紧迫不利，影响调度性能）</em></li>
+</ul>
+<h4 id="3-3-2优先权调度算法（PS）"><a href="#3-3-2优先权调度算法（PS）" class="headerlink" title="3.3.2优先权调度算法（PS）"></a>3.3.2优先权调度算法（PS）</h4><ul>
+<li>只适用于 长、短调度；</li>
+<li><ul>
+<li>抢占式优先权调度</li>
+</ul>
+</li>
+<li><ul>
+<li>非抢占式优先权调度</li>
+</ul>
+</li>
+<li>优先权类型：静态优先级，动态优先级 <em>（等待时间越长越高，执行一个时间片就降低一个等级）</em></li>
+</ul>
+<h4 id="高响应比优先算法"><a href="#高响应比优先算法" class="headerlink" title="高响应比优先算法"></a>高响应比优先算法</h4><ul>
+<li>式FCFS &amp; SJS的折衷</li>
+<li><strong>响应比</strong>= (等待时间 + 要求执行时间) / 要求执行时间<br>＝1＋等待时间/要求执行时间</li>
+<li>缺点：计算响应比有开销。</li>
+</ul>
+<h4 id="3-2-3-基于时间片的轮转调度算法（Round-Robin-RR）"><a href="#3-2-3-基于时间片的轮转调度算法（Round-Robin-RR）" class="headerlink" title="3.2.3 基于时间片的轮转调度算法（Round Robin, RR）"></a>3.2.3 基于时间片的轮转调度算法（Round Robin, RR）</h4><ul>
+<li>基本思路是通过时间片轮转，提高进程并发性和响应时间特性，从而**提高资源利用率<h4 id="3-3-多级反馈队列调度算法-Round-Robin-with-Multiple-Feedback"><a href="#3-3-多级反馈队列调度算法-Round-Robin-with-Multiple-Feedback" class="headerlink" title="3.3 多级反馈队列调度算法(Round Robin with Multiple Feedback)"></a>3.3 多级反馈队列调度算法(Round Robin with Multiple Feedback)</h4></li>
+<li>设置多个就绪队列，不同优先级。</li>
+<li>新进程进入内存，先放入最高优先级队列队尾，执行完一个时间片若未执行完则放入下一级优先权队尾。</li>
+<li>到最后一级采用FCFS直到结束。</li>
+<li>高优先级队列为空才执行低优先级队列。</li>
+</ul>
+<h4 id="3-4实时调度"><a href="#3-4实时调度" class="headerlink" title="3.4实时调度"></a>3.4实时调度</h4><ul>
+<li><strong>基本条件</strong>：</li>
+<li><ul>
+<li>提供必要的信息 <em>（就绪时间，开始时间，截至时间，处理时间，优先级，资源要求）</em></li>
+</ul>
+</li>
+<li><ul>
+<li>处理能力强</li>
+</ul>
+</li>
+<li><ul>
+<li>采用抢占式调度机制</li>
+</ul>
+</li>
+<li><ul>
+<li>具有快速切换机制</li>
+</ul>
+</li>
+<li><ul>
+<li><ul>
+<li>对外部中断快速响应能力</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><ul>
+<li><ul>
+<li>快速任务分派能力</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p><strong>分类</strong>：</p>
+</li>
+<li><ul>
+<li>非抢占式实时调度：</li>
+</ul>
+</li>
+<li><ul>
+<li><ul>
+<li>非抢占式轮转算法</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><ul>
+<li><ul>
+<li>非抢占式优先权算法</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><ul>
+<li>抢占式实时调度：</li>
+</ul>
+</li>
+<li><ul>
+<li><ul>
+<li>基于时钟中断的抢占式优先权调度算法</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><ul>
+<li><ul>
+<li>立即抢占</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><strong>常用实时调度算法</strong></li>
+<li><ul>
+<li>最早截止时间优先(EDF) <em>(根据最早截至时间确定优先级，可抢占（适合周期任务）可非抢占（适合非周期任务）)</em></li>
+</ul>
+</li>
+<li><ul>
+<li>最低松弛度优先(LLF) <em>(紧急程度越高优先级越高，主要用与可抢占)</em></li>
+</ul>
+</li>
+<li><ul>
+<li><ul>
+<li>松弛度 = 必须完成时间 - 运行时间 - 当前时间 </li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h4 id="3-5死锁"><a href="#3-5死锁" class="headerlink" title="3.5死锁"></a>3.5死锁</h4><ul>
+<li>产生死锁的四个<strong>必要条件</strong>：</li>
+<li><ul>
+<li>互斥</li>
+</ul>
+</li>
+<li><ul>
+<li>请求和保持</li>
+</ul>
+</li>
+<li><ul>
+<li>不剥夺</li>
+</ul>
+</li>
+<li><ul>
+<li>环路等待</li>
+</ul>
+</li>
+<li><strong>处理</strong>死锁的方法：预防，避免，检验，解除；</li>
+</ul>
+<h4 id="3-6-1预防死锁"><a href="#3-6-1预防死锁" class="headerlink" title="3.6.1预防死锁"></a>3.6.1预防死锁</h4><ul>
+<li>摒弃“请求保持”条件：</li>
+<li><ul>
+<li>预先分配所需全部资源；</li>
+</ul>
+</li>
+<li>摒弃“不可剥夺”条件：</li>
+<li><ul>
+<li>当已经有了一些资源，再提出新资源请求时若得不到满足则释放所有资源；</li>
+</ul>
+</li>
+<li>摒弃“环路等待”条件：</li>
+<li><ul>
+<li>资源分类排序，对资源请求必须按顺序请求，避免环路；</li>
+</ul>
+</li>
+</ul>
+<h4 id="3-6-2系统的安全状态"><a href="#3-6-2系统的安全状态" class="headerlink" title="3.6.2系统的安全状态"></a>3.6.2系统的安全状态</h4><ul>
+<li>是指系统能按某种进程顺序（P1, P2,….Pn），为进程Pi分配其所需资源，直至进程的最大需求，使每个进程都可顺利完成。 则（P1, P2, ….Pn）称为<strong>安全序列</strong>，若找不到安全序列则称“不安全状态”。</li>
+<li>若不按安全序列执行则可能导致进入不安全状态；</li>
+<li>死锁是不安全状态的子集。</li>
+</ul>
+<h4 id="3-6-3避免死锁——银行家算法"><a href="#3-6-3避免死锁——银行家算法" class="headerlink" title="3.6.3避免死锁——银行家算法"></a>3.6.3避免死锁——银行家算法</h4><h4 id="3-7死锁的检测与解除"><a href="#3-7死锁的检测与解除" class="headerlink" title="3.7死锁的检测与解除"></a>3.7死锁的检测与解除</h4></div><div class="article-meta" style="max-width:800px"></div><div class="article-comment" style="max-width:800px"><div class="ds-thread" id="ds-thread" data-thread-key="cjfaqun9r0000lgw06eltgw64" data-title="OS_3处理机调度与死锁" data-url="http://yoursite.com/2018/03/28/OS-3处理机调度与死锁/" site-name="ueibo"></div><script>var siteName = document.getElementById('ds-thread').getAttribute('site-name');
+var duoshuoQuery = {short_name: siteName};
+(function() {
+  var ds = document.createElement('script');
+  ds.type = 'text/javascript';ds.async = true;
+  ds.src = (document.location.protocol == 'https:' ? 'https:' : 'http:') + '//static.duoshuo.com/embed.js';
+  ds.charset = 'UTF-8';
+  (document.getElementsByTagName('head')[0] 
+  || document.getElementsByTagName('body')[0]).appendChild(ds);
+})();</script></div><ul class="navication"><li class="home"><a href="/"><i class="icon icon-home"></i></a></li><li><a href="/2018/03/15/markdown简单语法学习/"><i class="icon icon-arror-right"></i></a></li></ul><div class="page-footer"><div class="top"><ul class="social"><li><a href="https://github.com/BOZINAN" title="Github" target="_blank"><i class="icon icon-github"></i></a></li><li><a href="https://weibo.com/5656433158" title="Weibo" target="_blank"><i class="icon icon-weibo"></i></a></li></ul></div><div class="bottom"><p class="copyright">© 2018 BOZINAN'S WORLD<br><small>POWER BY <a href="https://hexo.io" target="_blank">HEXO</a></small><small>, THEME BY <a href="https://github.com/BoizZ/hexo-theme-laughing" target="_blank">LAUGHING</a></small></p></div></div></div><script>var wrap = document.getElementById('wrap');
+window.onload = function () {
+  wrap.className += ' done';
+}</script></body></html>
